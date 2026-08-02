@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
+import 'services/mock_data_provider.dart';
+import 'services/database_helper.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // TEMPORARY: seed mock data once. Remove this call once you have
+  // real data entry screens (Step 6+).
+  final vehicles = await DatabaseHelper.instance.getVehicles();
+  if (vehicles.isEmpty) {
+    await MockDataProvider.seedDatabase();
+  }
+
   runApp(const DrivoraApp());
 }
 

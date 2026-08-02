@@ -1,6 +1,7 @@
 import '../models/vehicle.dart';
 import '../models/document_record.dart';
 import '../models/service_record.dart';
+import 'database_helper.dart';
 
 class MockDataProvider {
   static List<Vehicle> getVehicles() {
@@ -71,5 +72,18 @@ class MockDataProvider {
         garageName: 'Honda Service Center',
       ),
     ];
+  }
+
+  static Future<void> seedDatabase() async {
+    final db = DatabaseHelper.instance;
+    for (final v in getVehicles()) {
+      await db.insertVehicle(v);
+    }
+    for (final d in getDocuments()) {
+      await db.insertDocument(d);
+    }
+    for (final s in getServiceRecords()) {
+      await db.insertServiceRecord(s);
+    }
   }
 }

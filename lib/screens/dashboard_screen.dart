@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../models/document_record.dart';
-import '../services/mock_data_provider.dart';
+import '../services/database_helper.dart';
 import 'vehicle_detail_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+  Future<Map<String, dynamic>> _loadData() async {
+    final db = DatabaseHelper.instance;
+    final vehicles = await db.getVehicles();
+    final documents = await db.getLatestDocumentsForAllVehicles();
+    return {'vehicles': vehicles, 'documents': documents};
+  }
+
   @override
   Widget build(BuildContext context) {
-    final vehicles = MockDataProvider.getVehicles();
-    final documents = MockDataProvider.getDocuments();
-
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
@@ -19,15 +23,46 @@ class DashboardScreen extends StatelessWidget {
         title: const Text('Drivora'),
         elevation: 0,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: vehicles.length,
-        itemBuilder: (context, index) {
-          final vehicle = vehicles[index];
-          final vehicleDocs =
-              documents.where((d) => d.vehicleId == vehicle.id).toList();
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _loadData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          return _VehicleCard(vehicle: vehicle, documents: vehicleDocs);
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading data: ${snapshot.error}',
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+            );
+          }
+
+          final vehicles = snapshot.data!['vehicles'] as List<Vehicle>;
+          final documents = snapshot.data!['documents'] as List<DocumentRecord>;
+
+          if (vehicles.isEmpty) {
+            return const Center(
+              child: Text(
+                'No vehicles yet',
+                style: TextStyle(color: Colors.grey),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: vehicles.length,
+            itemBuilder: (context, index) {
+              final vehicle = vehicles[index];
+              final vehicleDocs = documents
+                  .where((d) => d.vehicleId == vehicle.id)
+                  .toList();
+
+              return _VehicleCard(vehicle: vehicle, documents: vehicleDocs);
+            },
+          );
         },
       ),
     );
@@ -87,10 +122,13 @@ class _VehicleCard extends StatelessWidget {
                 children: documents.map((doc) {
                   return Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: _statusColor(doc.daysUntilExpiry)
-                          .withOpacity(0.15),
+                      color: _statusColor(
+                        doc.daysUntilExpiry,
+                      ).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _statusColor(doc.daysUntilExpiry),
