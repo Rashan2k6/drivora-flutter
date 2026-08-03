@@ -3,15 +3,35 @@ import '../models/vehicle.dart';
 import '../models/document_record.dart';
 import '../services/database_helper.dart';
 import 'vehicle_detail_screen.dart';
+import 'add_vehicle_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  late Future<Map<String, dynamic>> _dataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataFuture = _loadData();
+  }
 
   Future<Map<String, dynamic>> _loadData() async {
     final db = DatabaseHelper.instance;
     final vehicles = await db.getVehicles();
     final documents = await db.getLatestDocumentsForAllVehicles();
     return {'vehicles': vehicles, 'documents': documents};
+  }
+
+  void _refresh() {
+    setState(() {
+      _dataFuture = _loadData();
+    });
   }
 
   @override
@@ -23,8 +43,19 @@ class DashboardScreen extends StatelessWidget {
         title: const Text('Drivora'),
         elevation: 0,
       ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF3B82F6),
+        onPressed: () async {
+          final added = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddVehicleScreen()),
+          );
+          if (added == true) _refresh();
+        },
+        child: const Icon(Icons.add),
+      ),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _loadData(),
+        future: _dataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -40,12 +71,13 @@ class DashboardScreen extends StatelessWidget {
           }
 
           final vehicles = snapshot.data!['vehicles'] as List<Vehicle>;
-          final documents = snapshot.data!['documents'] as List<DocumentRecord>;
+          final documents =
+              snapshot.data!['documents'] as List<DocumentRecord>;
 
           if (vehicles.isEmpty) {
             return const Center(
               child: Text(
-                'No vehicles yet',
+                'No vehicles yet — tap + to add one',
                 style: TextStyle(color: Colors.grey),
               ),
             );
