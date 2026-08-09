@@ -121,9 +121,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               TextFormField(
                 controller: _plateController,
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputStyle('Plate Number'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                textCapitalization: TextCapitalization.characters,
+                decoration: _inputStyle('Plate Number (e.g. CAB-1234, 300-1234)'),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (!Vehicle.isValidPlateNumber(v)) {
+                    return 'Format: XXX-0000, XX-0000, 000-0000, or 00-0000';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(

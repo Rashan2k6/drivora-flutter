@@ -57,7 +57,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
         backgroundColor: const Color(0xFF121212),
         appBar: AppBar(
           backgroundColor: const Color(0xFF121212),
-          title: Text('${widget.vehicle.make} ${widget.vehicle.model}'),
+          title: Text(widget.vehicle.displayName),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Documents'),
