@@ -20,7 +20,12 @@ class DocumentRecord {
   });
 
   //how many days left until expiry
-  int get daysUntilExpiry => expiryDate.difference(DateTime.now()).inDays;
+  int get daysUntilExpiry {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expiry = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
+    return expiry.difference(today).inDays;
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -38,7 +43,10 @@ class DocumentRecord {
     return DocumentRecord(
       id: map['id'],
       vehicleId: map['vehicleId'],
-      type: DocumentType.values.byName(map['type']),
+      type: DocumentType.values.firstWhere(
+        (e) => e.name == map['type'],
+        orElse: () => DocumentType.insurance,
+      ),
       expiryDate: DateTime.parse(map['expiryDate']),
       policyNumber: map['policyNumber'],
       issuer: map['issuer'],

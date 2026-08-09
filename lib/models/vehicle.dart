@@ -39,9 +39,10 @@ class Vehicle {
       model: map['model'],
       year: map['year'],
       photoPath: map['photoPath'],
-      type: map['type'] != null
-          ? VehicleType.values.byName(map['type'])
-          : VehicleType.car,
+      type: VehicleType.values.firstWhere(
+        (e) => e.name == map['type'],
+        orElse: () => VehicleType.car,
+      ),
     );
   }
 }

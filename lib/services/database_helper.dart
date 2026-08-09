@@ -24,50 +24,55 @@ class DatabaseHelper {
       path,
       version: 2,
       onUpgrade: (db, oldVersion, newVersion) async {
-        await db.execute('DROP TABLE IF EXISTS vehicles');
-        await db.execute('DROP TABLE IF EXISTS documents');
         await db.execute('DROP TABLE IF EXISTS service_records');
+        await db.execute('DROP TABLE IF EXISTS documents');
+        await db.execute('DROP TABLE IF EXISTS vehicles');
+        await _createTables(db);
       },
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE vehicles (
-            id TEXT PRIMARY KEY,
-            plateNumber TEXT NOT NULL,
-            make TEXT NOT NULL,
-            model TEXT NOT NULL,
-            year INTEGER,
-            photoPath TEXT,
-            type TEXT NOT NULL DEFAULT 'car'
-          )
-        ''');
-
-        await db.execute('''
-          CREATE TABLE documents (
-            id TEXT PRIMARY KEY,
-            vehicleId TEXT NOT NULL,
-            type TEXT NOT NULL,
-            expiryDate TEXT NOT NULL,
-            policyNumber TEXT,
-            issuer TEXT,
-            documentPhotoPath TEXT,
-            FOREIGN KEY (vehicleId) REFERENCES vehicles (id) ON DELETE CASCADE
-          )
-        ''');
-
-        await db.execute('''
-          CREATE TABLE service_records (
-            id TEXT PRIMARY KEY,
-            vehicleId TEXT NOT NULL,
-            date TEXT NOT NULL,
-            mileage INTEGER NOT NULL,
-            description TEXT NOT NULL,
-            cost REAL,
-            garageName TEXT,
-            FOREIGN KEY (vehicleId) REFERENCES vehicles (id) ON DELETE CASCADE
-          )
-        ''');
+        await _createTables(db);
       },
     );
+  }
+
+  static Future<void> _createTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS vehicles (
+        id TEXT PRIMARY KEY,
+        plateNumber TEXT NOT NULL,
+        make TEXT NOT NULL,
+        model TEXT NOT NULL,
+        year INTEGER,
+        photoPath TEXT,
+        type TEXT NOT NULL DEFAULT 'car'
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY,
+        vehicleId TEXT NOT NULL,
+        type TEXT NOT NULL,
+        expiryDate TEXT NOT NULL,
+        policyNumber TEXT,
+        issuer TEXT,
+        documentPhotoPath TEXT,
+        FOREIGN KEY (vehicleId) REFERENCES vehicles (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS service_records (
+        id TEXT PRIMARY KEY,
+        vehicleId TEXT NOT NULL,
+        date TEXT NOT NULL,
+        mileage INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        cost REAL,
+        garageName TEXT,
+        FOREIGN KEY (vehicleId) REFERENCES vehicles (id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   // ---------- VEHICLES ----------

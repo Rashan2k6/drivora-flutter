@@ -71,8 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
 
           final vehicles = snapshot.data!['vehicles'] as List<Vehicle>;
-          final documents =
-              snapshot.data!['documents'] as List<DocumentRecord>;
+          final documents = snapshot.data!['documents'] as List<DocumentRecord>;
 
           if (vehicles.isEmpty) {
             return const Center(
@@ -92,7 +91,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   .where((d) => d.vehicleId == vehicle.id)
                   .toList();
 
-              return _VehicleCard(vehicle: vehicle, documents: vehicleDocs);
+              return _VehicleCard(
+                vehicle: vehicle,
+                documents: vehicleDocs,
+                onRefresh: _refresh,
+              );
             },
           );
         },
@@ -104,13 +107,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
 class _VehicleCard extends StatelessWidget {
   final Vehicle vehicle;
   final List<DocumentRecord> documents;
+  final VoidCallback onRefresh;
 
-  const _VehicleCard({required this.vehicle, required this.documents});
+  const _VehicleCard({
+    required this.vehicle,
+    required this.documents,
+    required this.onRefresh,
+  });
 
   Color _statusColor(int daysUntilExpiry) {
     if (daysUntilExpiry < 0) return Colors.redAccent;
     if (daysUntilExpiry <= 14) return Colors.amber;
     return Colors.greenAccent;
+  }
+
+  IconData _vehicleIcon(VehicleType type) {
+    switch (type) {
+      case VehicleType.car:
+        return Icons.directions_car_outlined;
+      case VehicleType.motorcycle:
+        return Icons.two_wheeler_outlined;
+      case VehicleType.van:
+        return Icons.airport_shuttle_outlined;
+      case VehicleType.threeWheeler:
+        return Icons.electric_rickshaw_outlined;
+      case VehicleType.truck:
+        return Icons.local_shipping_outlined;
+      case VehicleType.bus:
+        return Icons.directions_bus_outlined;
+      case VehicleType.other:
+        return Icons.directions_car_outlined;
+    }
   }
 
   @override
@@ -121,31 +148,52 @@ class _VehicleCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => VehicleDetailScreen(vehicle: vehicle),
             ),
           );
+          onRefresh();
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${vehicle.make} ${vehicle.model}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                vehicle.plateNumber,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${vehicle.make} ${vehicle.model}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          vehicle.plateNumber,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _vehicleIcon(vehicle.type),
+                    color: const Color(0xFF3B82F6),
+                    size: 28,
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -160,7 +208,7 @@ class _VehicleCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: _statusColor(
                         doc.daysUntilExpiry,
-                      ).withOpacity(0.15),
+                      ).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _statusColor(doc.daysUntilExpiry),

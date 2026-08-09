@@ -132,7 +132,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                             ),
                             child: ListTile(
                               title: Text(
-                                _documentTypeLabel(doc.type as DocumentType),
+                                _documentTypeLabel(doc.type),
                                 style: const TextStyle(color: Colors.white),
                               ),
                               subtitle: Text(
@@ -154,6 +154,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     : ListView(
                         padding: const EdgeInsets.all(16),
                         children: services.map((s) {
+                          final dateStr =
+                              s.date.toLocal().toString().split(' ')[0];
                           return Card(
                             color: const Color(0xFF1E1E24),
                             margin: const EdgeInsets.only(bottom: 12),
@@ -166,8 +168,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 style: const TextStyle(color: Colors.white),
                               ),
                               subtitle: Text(
-                                '${s.date.toLocal()}'.split(' ')[0] +
-                                    ' • ${s.mileage}km • Rs.${s.cost}',
+                                '$dateStr • ${s.mileage}km • Rs.${s.cost}',
                                 style: const TextStyle(color: Colors.grey),
                               ),
                             ),

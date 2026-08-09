@@ -36,7 +36,7 @@ class ServiceRecord {
       date: DateTime.parse(map['date']),
       mileage: map['mileage'],
       description: map['description'],
-      cost: map['cost'],
+      cost: (map['cost'] as num?)?.toDouble(),
       garageName: map['garageName'],
     );
   }
