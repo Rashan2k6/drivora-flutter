@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../models/document_record.dart';
 import '../services/database_helper.dart';
+import '../services/ai_extraction_service.dart';
 
 class AddDocumentScreen extends StatefulWidget {
   final String vehicleId;
@@ -20,6 +23,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   DocumentType _selectedType = DocumentType.insurance;
   DateTime? _expiryDate;
   bool _saving = false;
+  bool _scanning = false;
 
   @override
   void dispose() {
@@ -31,7 +35,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   Future<void> _pickExpiryDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 30)),
+      initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 30)),
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
       builder: (context, child) {
@@ -50,6 +54,99 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
       setState(() => _expiryDate = picked);
     }
   }
+
+  DocumentType? _mapDocumentType(String? typeString) {
+    if (typeString == null) return null;
+    try {
+      return DocumentType.values.byName(typeString);
+    } catch (_) {
+      return null; // AI returned something unexpected — ignore it
+    }
+  }
+
+  DateTime? _parseDate(String? dateString) {
+    if (dateString == null) return null;
+    try {
+      return DateTime.parse(dateString);
+    } catch (_) {
+      return null; // AI returned a bad/unparseable date — ignore it
+    }
+  }
+
+  Future<void> _scanDocument() async {
+    final picker = ImagePicker();
+    final pickedFile = await showModalBottomSheet<XFile?>(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E24),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.white),
+              title: const Text('Take Photo', style: TextStyle(color: Colors.white)),
+              onTap: () async {
+                final file = await picker.pickImage(source: ImageSource.camera);
+                if (context.mounted) Navigator.pop(context, file);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.white),
+              title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white)),
+              onTap: () async {
+                final file = await picker.pickImage(source: ImageSource.gallery);
+                if (context.mounted) Navigator.pop(context, file);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (pickedFile == null) return;
+
+    setState(() => _scanning = true);
+
+    try {
+      final extracted = await AiExtractionService.extractFromImage(
+        File(pickedFile.path),
+      );
+
+      final mappedType = _mapDocumentType(extracted.documentType);
+      final parsedDate = _parseDate(extracted.expiryDate);
+
+      setState(() {
+        if (mappedType != null) _selectedType = mappedType;
+        if (parsedDate != null) _expiryDate = parsedDate;
+        if (extracted.policyNumber != null) {
+          _policyNumberController.text = extracted.policyNumber!;
+        }
+        if (extracted.issuer != null) {
+          _issuerController.text = extracted.issuer!;
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Scanned — please review the details before saving'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Scan failed: please enter details manually. ($e)'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
   Future<void> _saveDocument() async {
     if (!_formKey.currentState!.validate()) return;
     if (_expiryDate == null) {
@@ -123,6 +220,39 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              // Scan button — sits above the manual form fields
+              OutlinedButton.icon(
+                onPressed: _scanning ? null : _scanDocument,
+                icon: _scanning
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF3B82F6),
+                        ),
+                      )
+                    : const Icon(Icons.document_scanner_outlined,
+                        color: Color(0xFF3B82F6)),
+                label: Text(
+                  _scanning ? 'Scanning...' : 'Scan Document',
+                  style: const TextStyle(color: Color(0xFF3B82F6)),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: const BorderSide(color: Color(0xFF3B82F6)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Scan a photo to auto-fill, or enter details manually below',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
               DropdownButtonFormField<DocumentType>(
                 initialValue: _selectedType,
                 dropdownColor: const Color(0xFF1E1E24),
@@ -187,14 +317,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text(
-                      'Save Document',
-                          style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                    : const Text('Save Document'),
               ),
             ],
           ),

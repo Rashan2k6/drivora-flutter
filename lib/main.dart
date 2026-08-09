@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
 import 'services/mock_data_provider.dart';
 import 'services/database_helper.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
 
   // TEMPORARY: seed mock data once. Remove this call once you have
   // real data entry screens (Step 6+).
