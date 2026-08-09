@@ -22,9 +22,11 @@ class DatabaseHelper {
 
     return openDatabase(
       path,
-      version: 1,
-      onConfigure: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
+      version: 2,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        await db.execute('DROP TABLE IF EXISTS vehicles');
+        await db.execute('DROP TABLE IF EXISTS documents');
+        await db.execute('DROP TABLE IF EXISTS service_records');
       },
       onCreate: (db, version) async {
         await db.execute('''
@@ -34,7 +36,8 @@ class DatabaseHelper {
             make TEXT NOT NULL,
             model TEXT NOT NULL,
             year INTEGER,
-            photoPath TEXT
+            photoPath TEXT,
+            type TEXT NOT NULL DEFAULT 'car'
           )
         ''');
 
@@ -116,9 +119,11 @@ class DatabaseHelper {
   /// Returns only the LATEST document per type for a vehicle —
   /// this is what the dashboard should use.
   Future<List<DocumentRecord>> getLatestDocumentsPerType(
-      String vehicleId) async {
+    String vehicleId,
+  ) async {
     final db = await database;
-    final maps = await db.rawQuery('''
+    final maps = await db.rawQuery(
+      '''
       SELECT d.* FROM documents d
       INNER JOIN (
         SELECT type, MAX(expiryDate) AS maxExpiry
@@ -128,7 +133,9 @@ class DatabaseHelper {
       ) latest
       ON d.type = latest.type AND d.expiryDate = latest.maxExpiry
       WHERE d.vehicleId = ?
-    ''', [vehicleId, vehicleId]);
+    ''',
+      [vehicleId, vehicleId],
+    );
     return maps.map((m) => DocumentRecord.fromMap(m)).toList();
   }
 

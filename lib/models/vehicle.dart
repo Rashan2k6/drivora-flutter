@@ -1,10 +1,13 @@
+enum VehicleType { car, motorcycle, van, threeWheeler, truck, bus, other }
+
 class Vehicle {
   final String id;
   final String plateNumber;
   final String make;
   final String model;
   final int? year;
-  final String? photoPath; // local file path or asset path
+  final String? photoPath;
+  final VehicleType type;
 
   Vehicle({
     required this.id,
@@ -13,6 +16,7 @@ class Vehicle {
     required this.model,
     this.year,
     this.photoPath,
+    this.type = VehicleType.car,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +27,7 @@ class Vehicle {
       'model': model,
       'year': year,
       'photoPath': photoPath,
+      'type': type.name,
     };
   }
 
@@ -34,6 +39,9 @@ class Vehicle {
       model: map['model'],
       year: map['year'],
       photoPath: map['photoPath'],
+      type: map['type'] != null
+          ? VehicleType.values.byName(map['type'])
+          : VehicleType.car,
     );
   }
 }

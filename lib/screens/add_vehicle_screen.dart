@@ -17,6 +17,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
 
+  VehicleType _selectedType = VehicleType.car;
   bool _saving = false;
 
   @override
@@ -41,12 +42,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       year: _yearController.text.trim().isEmpty
           ? null
           : int.tryParse(_yearController.text.trim()),
+      type: _selectedType,
     );
 
     await DatabaseHelper.instance.insertVehicle(vehicle);
 
     if (mounted) {
-      Navigator.pop(context, true); // true = signal dashboard to refresh
+      Navigator.pop(context, true);
     }
   }
 
@@ -65,6 +67,25 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     );
   }
 
+  String _typeLabel(VehicleType type) {
+    switch (type) {
+      case VehicleType.car:
+        return 'Car';
+      case VehicleType.motorcycle:
+        return 'Motorcycle';
+      case VehicleType.van:
+        return 'Van';
+      case VehicleType.threeWheeler:
+        return 'Three-Wheeler';
+      case VehicleType.truck:
+        return 'Truck';
+      case VehicleType.bus:
+        return 'Bus';
+      case VehicleType.other:
+        return 'Other';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,6 +100,24 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              DropdownButtonFormField<VehicleType>(
+                initialValue: _selectedType,
+                dropdownColor: const Color(0xFF1E1E24),
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputStyle('Vehicle Type'),
+                items: VehicleType.values.map((type) {
+                  return DropdownMenuItem(
+                    value: type,
+                    child: Text(_typeLabel(type)),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedType = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _plateController,
                 style: const TextStyle(color: Colors.white),
@@ -129,8 +168,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         ),
                       )
                     : const Text(
-                      'Save Vehicle', 
-                          style: TextStyle(
+                        'Save Vehicle',
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
