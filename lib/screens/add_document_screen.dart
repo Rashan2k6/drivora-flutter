@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../models/document_record.dart';
 import '../services/database_helper.dart';
 import '../services/ai_extraction_service.dart';
+import '../widgets/scan_error_bottom_sheet.dart';
 
 class AddDocumentScreen extends StatefulWidget {
   final String vehicleId;
@@ -129,17 +130,25 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Scanned — please review the details before saving'),
+            content: Text('Document scanned successfully! Please review details before saving.'),
+            backgroundColor: Color(0xFF10B981),
           ),
+        );
+      }
+    } on ScanException catch (e) {
+      if (mounted) {
+        ScanErrorBottomSheet.show(
+          context: context,
+          exception: e,
+          onRetry: () => _scanDocument(),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Scan failed: please enter details manually. ($e)'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ScanErrorBottomSheet.show(
+          context: context,
+          exception: ScanException.unknown(e),
+          onRetry: () => _scanDocument(),
         );
       }
     } finally {
@@ -236,9 +245,14 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                         color: Color(0xFF3B82F6)),
                 label: Text(
                   _scanning ? 'Scanning...' : 'Scan Document',
-                  style: const TextStyle(color: Color(0xFF3B82F6)),
+                  style: const TextStyle(
+                    color: Color(0xFF3B82F6),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF3B82F6),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -303,6 +317,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                 onPressed: _saving ? null : _saveDocument,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -317,7 +332,14 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text('Save Document'),
+                    : const Text(
+                        'Save Document',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ],
           ),

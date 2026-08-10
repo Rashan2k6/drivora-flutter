@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../services/database_helper.dart';
 import 'add_document_screen.dart';
+import 'add_service_record_screen.dart';
 import '../models/document_record.dart';
 import '../models/service_record.dart';
 
@@ -71,20 +72,28 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
             return AnimatedBuilder(
               animation: tabController,
               builder: (context, _) {
-                // Only show "Add Document" FAB on the Documents tab (index 0)
-                if (tabController.index != 0) {
-                  return const SizedBox.shrink();
-                }
+                final isDocumentsTab = tabController.index == 0;
+
                 return FloatingActionButton(
                   backgroundColor: const Color(0xFF3B82F6),
                   onPressed: () async {
-                    final added = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            AddDocumentScreen(vehicleId: widget.vehicle.id),
-                      ),
-                    );
+                    final added = isDocumentsTab
+                        ? await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AddDocumentScreen(
+                                vehicleId: widget.vehicle.id,
+                              ),
+                            ),
+                          )
+                        : await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AddServiceRecordScreen(
+                                vehicleId: widget.vehicle.id,
+                              ),
+                            ),
+                          );
                     if (added == true) _refresh();
                   },
                   child: const Icon(Icons.add),
@@ -109,7 +118,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
               );
             }
 
-            final documents = snapshot.data!['documents'] as List<DocumentRecord>;
+            final documents =
+                snapshot.data!['documents'] as List<DocumentRecord>;
             final services = snapshot.data!['services'] as List<ServiceRecord>;
 
             return TabBarView(
@@ -136,8 +146,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 style: const TextStyle(color: Colors.white),
                               ),
                               subtitle: Text(
-                                'Expires: ${doc.expiryDate.toLocal()}'
-                                    .split(' ')[0],
+                                'Expires: ${doc.expiryDate.toLocal()}'.split(
+                                  ' ',
+                                )[0],
                                 style: const TextStyle(color: Colors.grey),
                               ),
                             ),
@@ -147,15 +158,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 services.isEmpty
                     ? const Center(
                         child: Text(
-                          'No service records yet',
+                          'No service records yet — tap + to add one',
                           style: TextStyle(color: Colors.grey),
                         ),
                       )
                     : ListView(
                         padding: const EdgeInsets.all(16),
                         children: services.map((s) {
-                          final dateStr =
-                              s.date.toLocal().toString().split(' ')[0];
+                          final dateStr = s.date.toLocal().toString().split(
+                            ' ',
+                          )[0];
                           return Card(
                             color: const Color(0xFF1E1E24),
                             margin: const EdgeInsets.only(bottom: 12),
@@ -168,7 +180,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 style: const TextStyle(color: Colors.white),
                               ),
                               subtitle: Text(
-                                '$dateStr • ${s.mileage}km • Rs.${s.cost}',
+                                '$dateStr • ${s.mileage}km' +
+                                    (s.cost != null ? ' • Rs.${s.cost}' : ''),
                                 style: const TextStyle(color: Colors.grey),
                               ),
                             ),

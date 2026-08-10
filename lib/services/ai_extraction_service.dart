@@ -1,7 +1,95 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+/// Categories of errors that can occur during document scanning
+enum ScanErrorType {
+  missingApiKey,
+  noInternet,
+  timeout,
+  unreadableDocument,
+  apiError,
+  unknown,
+}
+
+/// Custom structured exception for document scan failures with user-friendly strings
+class ScanException implements Exception {
+  final ScanErrorType type;
+  final String title;
+  final String message;
+  final String hint;
+  final String? originalError;
+
+  ScanException({
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.hint,
+    this.originalError,
+  });
+
+  factory ScanException.missingApiKey() {
+    return ScanException(
+      type: ScanErrorType.missingApiKey,
+      title: 'Scanner Unavailable',
+      message: 'Document auto-scanning is currently unavailable.',
+      hint: 'Please enter your document details manually below, or try scanning again later.',
+    );
+  }
+
+  factory ScanException.noInternet() {
+    return ScanException(
+      type: ScanErrorType.noInternet,
+      title: 'No Connection',
+      message: 'Unable to connect to the document processing service.',
+      hint: 'Please check your internet connection and try again, or enter details manually below.',
+    );
+  }
+
+  factory ScanException.timeout() {
+    return ScanException(
+      type: ScanErrorType.timeout,
+      title: 'Connection Timed Out',
+      message: 'Processing your document photo took too long.',
+      hint: 'Ensure you have a stable connection and try again, or enter details manually below.',
+    );
+  }
+
+  factory ScanException.unreadableDocument([String? details]) {
+    return ScanException(
+      type: ScanErrorType.unreadableDocument,
+      title: 'Document Unreadable',
+      message: 'We couldn\'t clearly read the text from this document photo.',
+      hint: 'Take a clear, well-lit photo of the entire document without heavy glare, or fill in details manually.',
+      originalError: details,
+    );
+  }
+
+  factory ScanException.apiError(int statusCode, String body) {
+    return ScanException(
+      type: ScanErrorType.apiError,
+      title: 'Scanner Temporarily Unavailable',
+      message: 'Auto-scanning is temporarily unavailable at the moment.',
+      hint: 'Please fill in your document details manually below, or try scanning again in a few minutes.',
+      originalError: 'Status $statusCode: $body',
+    );
+  }
+
+  factory ScanException.unknown(Object e) {
+    return ScanException(
+      type: ScanErrorType.unknown,
+      title: 'Scanning Failed',
+      message: 'Something went wrong while processing the document photo.',
+      hint: 'You can try scanning again with another photo, or enter document details manually below.',
+      originalError: e.toString(),
+    );
+  }
+
+  @override
+  String toString() => '$title: $message ($hint)';
+}
 
 /// Result of scanning a document photo — mirrors the fields on
 /// AddDocumentScreen's form so they can be used to pre-fill it.
@@ -17,6 +105,12 @@ class ExtractedDocumentData {
     this.policyNumber,
     this.issuer,
   });
+
+  bool get isEmpty =>
+      documentType == null &&
+      expiryDate == null &&
+      policyNumber == null &&
+      issuer == null;
 
   factory ExtractedDocumentData.fromJson(Map<String, dynamic> json) {
     return ExtractedDocumentData(
@@ -53,64 +147,88 @@ invent values.
 ''';
 
   /// Sends the document photo to OpenAI's vision model and returns
-  /// extracted structured data. Throws an Exception on failure —
-  /// caller should catch this and let the user fill the form manually.
+  /// extracted structured data. Throws a [ScanException] on failure.
   static Future<ExtractedDocumentData> extractFromImage(File imageFile) async {
     final apiKey = dotenv.env['OPENAI_API_KEY'];
-    if (apiKey == null || apiKey.isEmpty) {
-      throw Exception('OpenAI API key not configured');
+    if (apiKey == null || apiKey.trim().isEmpty) {
+      throw ScanException.missingApiKey();
     }
 
-    final bytes = await imageFile.readAsBytes();
-    final base64Image = base64Encode(bytes);
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
 
-    final response = await http.post(
-      Uri.parse(_apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: jsonEncode({
-        'model': 'gpt-4o-mini', // vision-capable, cost-effective
-        'messages': [
-          {'role': 'system', 'content': _systemPrompt},
-          {
-            'role': 'user',
-            'content': [
-              {
-                'type': 'text',
-                'text': 'Extract the document data from this image.',
-              },
-              {
-                'type': 'image_url',
-                'image_url': {
-                  'url': 'data:image/jpeg;base64,$base64Image',
+      final response = await http
+          .post(
+            Uri.parse(_apiUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${apiKey.trim()}',
+            },
+            body: jsonEncode({
+              'model': 'gpt-4o-mini',
+              'messages': [
+                {'role': 'system', 'content': _systemPrompt},
+                {
+                  'role': 'user',
+                  'content': [
+                    {
+                      'type': 'text',
+                      'text': 'Extract the document data from this image.',
+                    },
+                    {
+                      'type': 'image_url',
+                      'image_url': {
+                        'url': 'data:image/jpeg;base64,$base64Image',
+                      },
+                    },
+                  ],
                 },
-              },
-            ],
-          },
-        ],
-        'max_tokens': 500,
-      }),
-    );
+              ],
+              'max_tokens': 500,
+            }),
+          )
+          .timeout(const Duration(seconds: 25));
 
-    if (response.statusCode != 200) {
-      throw Exception(
-          'OpenAI API error (${response.statusCode}): ${response.body}');
+      if (response.statusCode != 200) {
+        throw ScanException.apiError(response.statusCode, response.body);
+      }
+
+      final decoded = jsonDecode(response.body);
+      final content = decoded['choices']?[0]?['message']?['content'] as String?;
+
+      if (content == null || content.trim().isEmpty) {
+        throw ScanException.unreadableDocument('Empty content from AI response');
+      }
+
+      // Model may occasionally wrap in markdown code fences despite
+      // instructions — strip those defensively before parsing.
+      final cleaned = content
+          .replaceAll(RegExp(r'^```json\s*'), '')
+          .replaceAll(RegExp(r'^```\s*'), '')
+          .replaceAll(RegExp(r'```\s*$'), '')
+          .trim();
+
+      final Map<String, dynamic> jsonData = jsonDecode(cleaned);
+      final result = ExtractedDocumentData.fromJson(jsonData);
+
+      if (result.isEmpty) {
+        throw ScanException.unreadableDocument('No structured fields could be recognized');
+      }
+
+      return result;
+    } on ScanException {
+      rethrow;
+    } on SocketException {
+      throw ScanException.noInternet();
+    } on http.ClientException {
+      throw ScanException.noInternet();
+    } on TimeoutException {
+      throw ScanException.timeout();
+    } on FormatException catch (e) {
+      throw ScanException.unreadableDocument('JSON parse error: ${e.message}');
+    } catch (e) {
+      throw ScanException.unknown(e);
     }
-
-    final decoded = jsonDecode(response.body);
-    final content = decoded['choices'][0]['message']['content'] as String;
-
-    // Model may occasionally wrap in markdown code fences despite
-    // instructions — strip those defensively before parsing.
-    final cleaned = content
-        .replaceAll(RegExp(r'^```json\s*'), '')
-        .replaceAll(RegExp(r'^```\s*'), '')
-        .replaceAll(RegExp(r'```\s*$'), '')
-        .trim();
-
-    final Map<String, dynamic> jsonData = jsonDecode(cleaned);
-    return ExtractedDocumentData.fromJson(jsonData);
   }
-}
+}
