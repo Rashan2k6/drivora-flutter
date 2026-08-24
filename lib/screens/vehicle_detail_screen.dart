@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../services/database_helper.dart';
+import '../services/symptom_checker_screen.dart';
 import 'add_document_screen.dart';
 import 'add_service_record_screen.dart';
 import '../models/document_record.dart';
@@ -59,6 +60,23 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF121212),
           title: Text(widget.vehicle.displayName),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.smart_toy_outlined),
+              tooltip: 'AI Symptom Checker',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SymptomCheckerScreen(
+                      vehicleId: widget.vehicle.id,
+                      vehicleName: widget.vehicle.displayName,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Documents'),

@@ -159,6 +159,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 onPressed: _saving ? null : _saveVehicle,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

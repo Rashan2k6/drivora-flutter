@@ -165,6 +165,7 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
                 onPressed: _saving ? null : _saveRecord,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -179,7 +180,14 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text('Save Service Record'),
+                    : const Text(
+                        'Save Service Record',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ],
           ),
