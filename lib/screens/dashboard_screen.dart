@@ -4,6 +4,7 @@ import '../models/document_record.dart';
 import '../services/database_helper.dart';
 import 'vehicle_detail_screen.dart';
 import 'add_vehicle_screen.dart';
+import 'chatbot_entry_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -42,8 +43,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: const Color(0xFF121212),
         elevation: 0,
         scrolledUnderElevation: 0,
-        toolbarHeight: 70,
-        titleSpacing: 16,
+        toolbarHeight: 76,
+        titleSpacing: 20,
         title: Row(
           children: [
             Container(
@@ -98,6 +99,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         actions: [
           IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChatbotEntryScreen()),
+              );
+            },
+            tooltip: 'AI Diagnostic Assistant',
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E24),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF2F80ED).withValues(alpha: 0.35),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2F80ED).withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.smart_toy_outlined,
+                color: Color(0xFF2F80ED),
+                size: 20,
+              ),
+            ),
+          ),
+          IconButton(
             onPressed: _refresh,
             tooltip: 'Refresh',
             icon: Container(
@@ -105,9 +137,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E1E24),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: const Icon(
                 Icons.refresh_rounded,
@@ -119,16 +149,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF3B82F6),
-        onPressed: () async {
-          final added = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddVehicleScreen()),
-          );
-          if (added == true) _refresh();
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: SizedBox(
+        width: 170,
+        height: 50,
+        child: FloatingActionButton.extended(
+          heroTag: 'addVehicleFab',
+          backgroundColor: const Color(0xFF2F80ED),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          onPressed: () async {
+            final added = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddVehicleScreen()),
+            );
+            if (added == true) _refresh();
+          },
+          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          label: const Text(
+            'Add Vehicle',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dataFuture,
@@ -152,14 +200,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (vehicles.isEmpty) {
             return const Center(
               child: Text(
-                'No vehicles yet — tap + to add one',
+                'No vehicles yet — tap + Add Vehicle to add one',
                 style: TextStyle(color: Colors.grey),
               ),
             );
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
             itemCount: vehicles.length,
             itemBuilder: (context, index) {
               final vehicle = vehicles[index];
@@ -253,10 +301,7 @@ class _VehicleCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       vehicle.plateNumber,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
+                      style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     if (documents.isNotEmpty) ...[
                       const SizedBox(height: 12),

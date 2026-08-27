@@ -122,6 +122,41 @@ class ExtractedDocumentData {
   }
 }
 
+/// Result of scanning a service receipt or invoice photo — mirrors the fields on
+/// AddServiceRecordScreen's form so they can be used to pre-fill it.
+class ExtractedServiceRecordData {
+  final String? date; // ISO format: YYYY-MM-DD
+  final int? mileage;
+  final String? description;
+  final double? cost;
+  final String? garageName;
+
+  ExtractedServiceRecordData({
+    this.date,
+    this.mileage,
+    this.description,
+    this.cost,
+    this.garageName,
+  });
+
+  bool get isEmpty =>
+      date == null &&
+      mileage == null &&
+      description == null &&
+      cost == null &&
+      garageName == null;
+
+  factory ExtractedServiceRecordData.fromJson(Map<String, dynamic> json) {
+    return ExtractedServiceRecordData(
+      date: json['date'] as String?,
+      mileage: (json['mileage'] as num?)?.toInt(),
+      description: json['description'] as String?,
+      cost: (json['cost'] as num?)?.toDouble(),
+      garageName: json['garage_name'] as String?,
+    );
+  }
+}
+
 class AiExtractionService {
   static const String _apiUrl = 'https://api.openai.com/v1/chat/completions';
 
@@ -144,6 +179,26 @@ If a field is not visible or not applicable, use null for that field.
 If you cannot confidently determine the document type, use null.
 Only extract what is actually visible in the image — never guess or
 invent values.
+''';
+
+  static const String _servicePrompt = '''
+You extract structured data from photos of vehicle service receipts, invoices,
+maintenance bills, or repair job sheets.
+
+Respond with ONLY a raw JSON object, no markdown formatting, no code
+fences, no explanation. Use this exact shape:
+
+{
+  "date": "YYYY-MM-DD" | null,
+  "mileage": number | null,
+  "description": "string or null",
+  "cost": number | null,
+  "garage_name": "string or null"
+}
+
+If a field is not visible or not applicable, use null for that field.
+In description, summarize the key work done (e.g. "Oil change, brake pad replacement, general service").
+Only extract what is actually visible in the image — never guess or invent values.
 ''';
 
   /// Sends the document photo to OpenAI's vision model and returns
@@ -211,6 +266,90 @@ invent values.
 
       final Map<String, dynamic> jsonData = jsonDecode(cleaned);
       final result = ExtractedDocumentData.fromJson(jsonData);
+
+      if (result.isEmpty) {
+        throw ScanException.unreadableDocument('No structured fields could be recognized');
+      }
+
+      return result;
+    } on ScanException {
+      rethrow;
+    } on SocketException {
+      throw ScanException.noInternet();
+    } on http.ClientException {
+      throw ScanException.noInternet();
+    } on TimeoutException {
+      throw ScanException.timeout();
+    } on FormatException catch (e) {
+      throw ScanException.unreadableDocument('JSON parse error: ${e.message}');
+    } catch (e) {
+      throw ScanException.unknown(e);
+    }
+  }
+
+  /// Sends a service receipt/invoice photo to OpenAI's vision model and returns
+  /// extracted structured service data. Throws a [ScanException] on failure.
+  static Future<ExtractedServiceRecordData> extractServiceRecordFromImage(File imageFile) async {
+    final apiKey = dotenv.env['OPENAI_API_KEY'];
+    if (apiKey == null || apiKey.trim().isEmpty) {
+      throw ScanException.missingApiKey();
+    }
+
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      final response = await http
+          .post(
+            Uri.parse(_apiUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${apiKey.trim()}',
+            },
+            body: jsonEncode({
+              'model': 'gpt-4o-mini',
+              'messages': [
+                {'role': 'system', 'content': _servicePrompt},
+                {
+                  'role': 'user',
+                  'content': [
+                    {
+                      'type': 'text',
+                      'text': 'Extract the service record details from this receipt or invoice.',
+                    },
+                    {
+                      'type': 'image_url',
+                      'image_url': {
+                        'url': 'data:image/jpeg;base64,$base64Image',
+                      },
+                    },
+                  ],
+                },
+              ],
+              'max_tokens': 500,
+            }),
+          )
+          .timeout(const Duration(seconds: 25));
+
+      if (response.statusCode != 200) {
+        throw ScanException.apiError(response.statusCode, response.body);
+      }
+
+      final decoded = jsonDecode(response.body);
+      final content = decoded['choices']?[0]?['message']?['content'] as String?;
+
+      if (content == null || content.trim().isEmpty) {
+        throw ScanException.unreadableDocument('Empty content from AI response');
+      }
+
+      final cleaned = content
+          .replaceAll(RegExp(r'^```json\s*'), '')
+          .replaceAll(RegExp(r'^```\s*'), '')
+          .replaceAll(RegExp(r'```\s*$'), '')
+          .trim();
+
+      final Map<String, dynamic> jsonData = jsonDecode(cleaned);
+      final result = ExtractedServiceRecordData.fromJson(jsonData);
 
       if (result.isEmpty) {
         throw ScanException.unreadableDocument('No structured fields could be recognized');

@@ -56,4 +56,32 @@ void main() {
       expect(data.isEmpty, isFalse);
     });
   });
+
+  group('ExtractedServiceRecordData tests', () {
+    test('isEmpty returns true when all fields are null', () {
+      final data = ExtractedServiceRecordData();
+      expect(data.isEmpty, isTrue);
+    });
+
+    test('isEmpty returns false when at least one field is provided', () {
+      final data = ExtractedServiceRecordData(description: 'Full Service');
+      expect(data.isEmpty, isFalse);
+    });
+
+    test('fromJson correctly parses map values and handles numeric conversions', () {
+      final jsonMap = {
+        'date': '2026-05-15',
+        'mileage': 45000,
+        'description': 'Oil change & filter replacement',
+        'cost': 12500.50,
+        'garage_name': 'Speedy Auto Care',
+      };
+      final data = ExtractedServiceRecordData.fromJson(jsonMap);
+      expect(data.date, equals('2026-05-15'));
+      expect(data.mileage, equals(45000));
+      expect(data.description, equals('Oil change & filter replacement'));
+      expect(data.cost, equals(12500.50));
+      expect(data.garageName, equals('Speedy Auto Care'));
+    });
+  });
 }

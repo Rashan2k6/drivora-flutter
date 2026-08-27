@@ -92,6 +92,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         backgroundColor: const Color(0xFF121212),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 72,
+        titleSpacing: 20,
         title: const Text('Add Vehicle'),
       ),
       body: Padding(
@@ -160,6 +164,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -175,7 +180,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         ),
                       )
                     : const Text(
-                        'Save Vehicle',
+                        'Add Vehicle',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

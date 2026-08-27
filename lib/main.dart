@@ -36,6 +36,19 @@ class DrivoraApp extends StatelessWidget {
           primary: Color(0xFF3B82F6),
           secondary: Color(0xFF10B981),
         ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF121212),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          toolbarHeight: 72,
+          titleSpacing: 20,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
       ),
       home: const DashboardScreen(),
     );

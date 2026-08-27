@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../models/service_record.dart';
 import '../services/database_helper.dart';
+import '../services/ai_extraction_service.dart';
+import '../widgets/scan_error_bottom_sheet.dart';
 
 class AddServiceRecordScreen extends StatefulWidget {
   final String vehicleId;
@@ -21,6 +25,7 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
 
   DateTime _serviceDate = DateTime.now();
   bool _saving = false;
+  bool _scanning = false;
 
   @override
   void dispose() {
@@ -51,6 +56,101 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
     );
     if (picked != null) {
       setState(() => _serviceDate = picked);
+    }
+  }
+
+  DateTime? _parseDate(String? dateString) {
+    if (dateString == null) return null;
+    try {
+      return DateTime.parse(dateString);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _scanServiceReceipt() async {
+    final picker = ImagePicker();
+    final pickedFile = await showModalBottomSheet<XFile?>(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E24),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.white),
+              title: const Text('Take Photo', style: TextStyle(color: Colors.white)),
+              onTap: () async {
+                final file = await picker.pickImage(source: ImageSource.camera);
+                if (context.mounted) Navigator.pop(context, file);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.white),
+              title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white)),
+              onTap: () async {
+                final file = await picker.pickImage(source: ImageSource.gallery);
+                if (context.mounted) Navigator.pop(context, file);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (pickedFile == null) return;
+
+    setState(() => _scanning = true);
+
+    try {
+      final extracted = await AiExtractionService.extractServiceRecordFromImage(
+        File(pickedFile.path),
+      );
+
+      final parsedDate = _parseDate(extracted.date);
+
+      setState(() {
+        if (parsedDate != null) _serviceDate = parsedDate;
+        if (extracted.mileage != null) {
+          _mileageController.text = extracted.mileage.toString();
+        }
+        if (extracted.description != null) {
+          _descriptionController.text = extracted.description!;
+        }
+        if (extracted.cost != null) {
+          _costController.text = extracted.cost.toString();
+        }
+        if (extracted.garageName != null) {
+          _garageController.text = extracted.garageName!;
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Service receipt scanned successfully! Please review details before saving.'),
+            backgroundColor: Color(0xFF10B981),
+          ),
+        );
+      }
+    } on ScanException catch (e) {
+      if (mounted) {
+        ScanErrorBottomSheet.show(
+          context: context,
+          exception: e,
+          onRetry: () => _scanServiceReceipt(),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScanErrorBottomSheet.show(
+          context: context,
+          exception: ScanException.unknown(e),
+          onRetry: () => _scanServiceReceipt(),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
@@ -101,6 +201,10 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         backgroundColor: const Color(0xFF121212),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 72,
+        titleSpacing: 20,
         title: const Text('Add Service Record'),
       ),
       body: Padding(
@@ -109,6 +213,44 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              // Scan button — sits above manual form fields
+              OutlinedButton.icon(
+                onPressed: _scanning ? null : _scanServiceReceipt,
+                icon: _scanning
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF3B82F6),
+                        ),
+                      )
+                    : const Icon(Icons.document_scanner_outlined,
+                        color: Color(0xFF3B82F6)),
+                label: Text(
+                  _scanning ? 'Scanning...' : 'Scan Receipt / Invoice',
+                  style: const TextStyle(
+                    color: Color(0xFF3B82F6),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF3B82F6),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: const BorderSide(color: Color(0xFF3B82F6)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Scan a photo of your receipt or invoice to auto-fill, or enter details manually below',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
               InkWell(
                 onTap: _pickServiceDate,
                 borderRadius: BorderRadius.circular(12),
@@ -166,6 +308,7 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -181,7 +324,7 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
                         ),
                       )
                     : const Text(
-                        'Save Service Record',
+                        'Add Record',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
