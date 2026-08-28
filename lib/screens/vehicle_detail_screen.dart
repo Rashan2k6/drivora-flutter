@@ -34,9 +34,15 @@ IconData _documentIcon(DocumentType type) {
 }
 
 Color _statusColor(int daysUntilExpiry) {
-  if (daysUntilExpiry < 0) return Colors.redAccent;
-  if (daysUntilExpiry <= 14) return Colors.amber;
-  return Colors.greenAccent;
+  if (daysUntilExpiry < 0) return const Color(0xFFEF4444); // Red
+  if (daysUntilExpiry <= 14) return const Color(0xFFF59E0B); // Yellow
+  return const Color(0xFF10B981); // Green
+}
+
+String _statusLabel(int daysUntilExpiry) {
+  if (daysUntilExpiry < 0) return 'Expired';
+  if (daysUntilExpiry <= 14) return 'Expires Soon';
+  return 'Valid';
 }
 
 class VehicleDetailScreen extends StatefulWidget {
@@ -122,6 +128,94 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
     }
   }
 
+  Future<void> _editDocument(DocumentRecord doc) async {
+    final updated = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddDocumentScreen(
+          vehicleId: widget.vehicle.id,
+          initialDocument: doc,
+        ),
+      ),
+    );
+    if (updated == true) _refresh();
+  }
+
+  Future<void> _deleteDocument(DocumentRecord doc) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Document', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to delete this ${_documentTypeLabel(doc.type)} record?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteDocument(doc.id);
+      _refresh();
+    }
+  }
+
+  Future<void> _editServiceRecord(ServiceRecord record) async {
+    final updated = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddServiceRecordScreen(
+          vehicleId: widget.vehicle.id,
+          initialRecord: record,
+        ),
+      ),
+    );
+    if (updated == true) _refresh();
+  }
+
+  Future<void> _deleteServiceRecord(ServiceRecord record) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Service Record', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Are you sure you want to delete this service record?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteServiceRecord(record.id);
+      _refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -132,7 +226,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           backgroundColor: const Color(0xFF121212),
           elevation: 0,
           scrolledUnderElevation: 0,
-          toolbarHeight: 76,
+          toolbarHeight: 80,
           titleSpacing: 20,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +240,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 6),
               Text(
                 '${widget.vehicle.plateNumber}${widget.vehicle.year != null ? ' • ${widget.vehicle.year}' : ''}',
                 style: const TextStyle(
@@ -275,6 +369,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: ListTile(
+                              contentPadding: const EdgeInsets.only(left: 14, right: 4),
+                              onTap: () => _editDocument(doc),
                               leading: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
@@ -297,23 +393,59 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 )[0],
                                 style: const TextStyle(color: Colors.grey),
                               ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: _statusColor(doc.daysUntilExpiry).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: _statusColor(doc.daysUntilExpiry)),
-                                ),
-                                child: Text(
-                                  doc.daysUntilExpiry < 0
-                                      ? 'Expired'
-                                      : (doc.daysUntilExpiry <= 14 ? 'Expiring Soon' : 'Valid'),
-                                  style: TextStyle(
-                                    color: _statusColor(doc.daysUntilExpiry),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _statusColor(doc.daysUntilExpiry).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: _statusColor(doc.daysUntilExpiry)),
+                                    ),
+                                    child: Text(
+                                      _statusLabel(doc.daysUntilExpiry),
+                                      style: TextStyle(
+                                        color: _statusColor(doc.daysUntilExpiry),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  PopupMenuButton<String>(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: const Icon(Icons.more_vert_rounded, color: Colors.grey, size: 20),
+                                    color: const Color(0xFF1E1E24),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    onSelected: (value) {
+                                      if (value == 'edit') _editDocument(doc);
+                                      if (value == 'delete') _deleteDocument(doc);
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.edit_outlined, color: Colors.white70, size: 18),
+                                            SizedBox(width: 10),
+                                            Text('Edit', style: TextStyle(color: Colors.white)),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                                            SizedBox(width: 10),
+                                            Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -339,6 +471,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: ListTile(
+                              contentPadding: const EdgeInsets.only(left: 14, right: 4),
+                              onTap: () => _editServiceRecord(s),
                               leading: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
@@ -360,6 +494,39 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                     (s.cost != null ? ' • Rs.${s.cost}' : '') +
                                     (s.garageName != null ? ' • ${s.garageName}' : ''),
                                 style: const TextStyle(color: Colors.grey),
+                              ),
+                              trailing: PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.more_vert_rounded, color: Colors.grey, size: 20),
+                                color: const Color(0xFF1E1E24),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                onSelected: (value) {
+                                  if (value == 'edit') _editServiceRecord(s);
+                                  if (value == 'delete') _deleteServiceRecord(s);
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit_outlined, color: Colors.white70, size: 18),
+                                        SizedBox(width: 10),
+                                        Text('Edit', style: TextStyle(color: Colors.white)),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                                        SizedBox(width: 10),
+                                        Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );

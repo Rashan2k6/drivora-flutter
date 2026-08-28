@@ -47,27 +47,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
         titleSpacing: 20,
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.directions_car_rounded,
-                color: Colors.white,
-                size: 24,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/Logo_1.png',
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF3B82F6,
+                          ).withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.directions_car_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 14),
@@ -240,9 +253,10 @@ class _VehicleCard extends StatelessWidget {
   });
 
   Color _statusColor(int daysUntilExpiry) {
-    if (daysUntilExpiry < 0) return Colors.redAccent;
-    if (daysUntilExpiry <= 14) return Colors.amber;
-    return Colors.greenAccent;
+    if (daysUntilExpiry < 0) return const Color(0xFFEF4444); // Red: Expired
+    if (daysUntilExpiry <= 14)
+      return const Color(0xFFF59E0B); // Yellow: Expires Soon
+    return const Color(0xFF10B981); // Green: Valid
   }
 
   IconData _vehicleIcon(VehicleType type) {

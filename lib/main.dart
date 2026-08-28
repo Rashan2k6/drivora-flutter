@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'screens/dashboard_screen.dart';
 import 'services/mock_data_provider.dart';
 import 'services/database_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +50,7 @@ class DrivoraApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const DashboardScreen(),
+      home: const SplashScreen(),
     );
   }
 }

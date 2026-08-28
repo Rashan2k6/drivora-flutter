@@ -9,8 +9,13 @@ import '../widgets/scan_error_bottom_sheet.dart';
 
 class AddServiceRecordScreen extends StatefulWidget {
   final String vehicleId;
+  final ServiceRecord? initialRecord;
 
-  const AddServiceRecordScreen({super.key, required this.vehicleId});
+  const AddServiceRecordScreen({
+    super.key,
+    required this.vehicleId,
+    this.initialRecord,
+  });
 
   @override
   State<AddServiceRecordScreen> createState() => _AddServiceRecordScreenState();
@@ -26,6 +31,18 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
   DateTime _serviceDate = DateTime.now();
   bool _saving = false;
   bool _scanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialRecord != null) {
+      _serviceDate = widget.initialRecord!.date;
+      _mileageController.text = widget.initialRecord!.mileage.toString();
+      _descriptionController.text = widget.initialRecord!.description;
+      _costController.text = widget.initialRecord!.cost?.toString() ?? '';
+      _garageController.text = widget.initialRecord!.garageName ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -159,8 +176,10 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
 
     setState(() => _saving = true);
 
+    final isEditing = widget.initialRecord != null;
+
     final record = ServiceRecord(
-      id: const Uuid().v4(),
+      id: isEditing ? widget.initialRecord!.id : const Uuid().v4(),
       vehicleId: widget.vehicleId,
       date: _serviceDate,
       mileage: int.parse(_mileageController.text.trim()),
@@ -173,7 +192,11 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
           : _garageController.text.trim(),
     );
 
-    await DatabaseHelper.instance.insertServiceRecord(record);
+    if (isEditing) {
+      await DatabaseHelper.instance.updateServiceRecord(record);
+    } else {
+      await DatabaseHelper.instance.insertServiceRecord(record);
+    }
 
     if (mounted) {
       Navigator.pop(context, true);
@@ -197,6 +220,8 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.initialRecord != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
@@ -205,7 +230,7 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
         scrolledUnderElevation: 0,
         toolbarHeight: 72,
         titleSpacing: 20,
-        title: const Text('Add Service Record'),
+        title: Text(isEditing ? 'Edit Service Record' : 'Add Service Record'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -323,9 +348,9 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text(
-                        'Add Record',
-                        style: TextStyle(
+                    : Text(
+                        isEditing ? 'Update Record' : 'Add Record',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,

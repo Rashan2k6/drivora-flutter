@@ -9,8 +9,13 @@ import '../widgets/scan_error_bottom_sheet.dart';
 
 class AddDocumentScreen extends StatefulWidget {
   final String vehicleId;
+  final DocumentRecord? initialDocument;
 
-  const AddDocumentScreen({super.key, required this.vehicleId});
+  const AddDocumentScreen({
+    super.key,
+    required this.vehicleId,
+    this.initialDocument,
+  });
 
   @override
   State<AddDocumentScreen> createState() => _AddDocumentScreenState();
@@ -25,6 +30,17 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   DateTime? _expiryDate;
   bool _saving = false;
   bool _scanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialDocument != null) {
+      _selectedType = widget.initialDocument!.type;
+      _expiryDate = widget.initialDocument!.expiryDate;
+      _policyNumberController.text = widget.initialDocument!.policyNumber ?? '';
+      _issuerController.text = widget.initialDocument!.issuer ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -167,8 +183,10 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
     setState(() => _saving = true);
 
+    final isEditing = widget.initialDocument != null;
+
     final doc = DocumentRecord(
-      id: const Uuid().v4(),
+      id: isEditing ? widget.initialDocument!.id : const Uuid().v4(),
       vehicleId: widget.vehicleId,
       type: _selectedType,
       expiryDate: _expiryDate!,
@@ -180,7 +198,11 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
           : _issuerController.text.trim(),
     );
 
-    await DatabaseHelper.instance.insertDocument(doc);
+    if (isEditing) {
+      await DatabaseHelper.instance.updateDocument(doc);
+    } else {
+      await DatabaseHelper.instance.insertDocument(doc);
+    }
 
     if (mounted) {
       Navigator.pop(context, true);
@@ -217,6 +239,8 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.initialDocument != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
@@ -225,7 +249,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
         scrolledUnderElevation: 0,
         toolbarHeight: 72,
         titleSpacing: 20,
-        title: const Text('Add Document'),
+        title: Text(isEditing ? 'Edit Document' : 'Add Document'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -337,9 +361,9 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text(
-                        'Add Document',
-                        style: TextStyle(
+                    : Text(
+                        isEditing ? 'Update Document' : 'Add Document',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,

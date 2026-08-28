@@ -163,6 +163,16 @@ class DatabaseHelper {
     return maps.map((m) => DocumentRecord.fromMap(m)).toList();
   }
 
+  Future<void> updateDocument(DocumentRecord doc) async {
+    final db = await database;
+    await db.update(
+      'documents',
+      doc.toMap(),
+      where: 'id = ?',
+      whereArgs: [doc.id],
+    );
+  }
+
   Future<void> deleteDocument(String id) async {
     final db = await database;
     await db.delete('documents', where: 'id = ?', whereArgs: [id]);
@@ -176,6 +186,16 @@ class DatabaseHelper {
       'service_records',
       record.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> updateServiceRecord(ServiceRecord record) async {
+    final db = await database;
+    await db.update(
+      'service_records',
+      record.toMap(),
+      where: 'id = ?',
+      whereArgs: [record.id],
     );
   }
 
