@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "431998949177",
+    "project_id": "drivora-app-f9e6c",
+    "storage_bucket": "drivora-app-f9e6c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:431998949177:android:29e08dec3eec7a99683ae8",
+        "android_client_info": {
+          "package_name": "com.example.drivora_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjqaLQt-85rbyf8zbel27PsNlN4xw-ibI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

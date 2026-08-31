@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 import 'services/mock_data_provider.dart';
 import 'services/database_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   try {
     await dotenv.load(fileName: ".env");
     await NotificationService.init();
@@ -21,8 +26,6 @@ void main() async {
     debugPrint('Could not load .env file: $e');
   }
 
-  // TEMPORARY: seed mock data once. Remove this call once you have
-  // real data entry screens (Step 6+).
   final vehicles = await DatabaseHelper.instance.getVehicles();
   if (vehicles.isEmpty) {
     await MockDataProvider.seedDatabase();
@@ -59,7 +62,21 @@ class DrivoraApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const SplashScreen(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              backgroundColor: Color(0xFF121212),
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData) {
+            return const SplashScreen();
+          }
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }

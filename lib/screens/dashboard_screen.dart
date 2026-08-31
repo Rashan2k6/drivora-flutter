@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../models/document_record.dart';
 import '../services/database_helper.dart';
+import '../services/auth_service.dart';
 import 'vehicle_detail_screen.dart';
 import 'add_vehicle_screen.dart';
 import 'chatbot_entry_screen.dart';
@@ -208,6 +209,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 );
               },
+            ),
+          ),
+          IconButton(
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E1E24),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Text('Sign Out', style: TextStyle(color: Colors.white)),
+                  content: const Text(
+                    'Are you sure you want to sign out of Drivora?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          color: Color(0xFFEF4444),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await AuthService.signOut();
+              }
+            },
+            tooltip: 'Sign Out',
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E24),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: Colors.white70,
+                size: 20,
+              ),
             ),
           ),
           const SizedBox(width: 8),
