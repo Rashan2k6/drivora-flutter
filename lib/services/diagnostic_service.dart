@@ -9,48 +9,36 @@ import 'package:http/http.dart' as http;
 /// under your active network adapter, e.g. 192.168.1.42).
 /// Your phone and computer must be on the SAME wifi network.
 class DiagnosticService {
-  // Candidate backend base URLs for local network, Android emulator (10.0.2.2), and localhost
-  static const List<String> _candidateUrls = [
-    'http://192.168.1.9:8000',
-    'http://10.0.2.2:8000',
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-  ];
+  static const String _baseUrl = 'https://drivora-agent-backend.onrender.com';
 
   static Future<String> diagnose({
     required String vehicleId,
     required String symptomDescription,
   }) async {
-    Object? lastError;
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/diagnose'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'vehicle_id': vehicleId,
+              'symptom_description': symptomDescription,
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
 
-    for (final baseUrl in _candidateUrls) {
-      try {
-        final response = await http
-            .post(
-              Uri.parse('$baseUrl/diagnose'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'vehicle_id': vehicleId,
-                'symptom_description': symptomDescription,
-              }),
-            )
-            .timeout(const Duration(seconds: 10));
-
-        if (response.statusCode == 200) {
-          final decoded = jsonDecode(response.body);
-          return decoded['diagnosis'] as String;
-        } else {
-          lastError = 'Status ${response.statusCode}: ${response.body}';
-        }
-      } catch (e) {
-        lastError = e;
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['diagnosis'] as String;
+      } else {
+        throw Exception(
+          'Server returned error status ${response.statusCode}: ${response.body}',
+        );
       }
+    } catch (_) {
+      throw Exception(
+        'Unable to connect to the vehicle diagnostic service. Please check your internet connection and try again.',
+      );
     }
-
-    throw Exception(
-      'Could not reach diagnostic backend service.\n'
-      'Ensure the server is running with: uvicorn main:app --host 0.0.0.0 --port 8000\n\n'
-      'Details: $lastError',
-    );
   }
 }

@@ -1,6 +1,6 @@
 {
-    "name": "drivora_flutter",
-    "short_name": "drivora_flutter",
+    "name": "Drivora",
+    "short_name": "Drivora",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

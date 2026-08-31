@@ -54,11 +54,19 @@ class _AddServiceRecordScreenState extends State<AddServiceRecordScreen> {
   }
 
   Future<void> _pickServiceDate() async {
+    final now = DateTime.now();
+    final initial = _serviceDate;
+    DateTime first = DateTime(2000);
+    DateTime last = DateTime(now.year + 5);
+
+    if (initial.isBefore(first)) first = initial;
+    if (initial.isAfter(last)) last = initial;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _serviceDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
-      lastDate: DateTime.now(),
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(

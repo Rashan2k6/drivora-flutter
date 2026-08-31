@@ -5,6 +5,7 @@ import '../services/database_helper.dart';
 import 'vehicle_detail_screen.dart';
 import 'add_vehicle_screen.dart';
 import 'chatbot_entry_screen.dart';
+import 'notification_center_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -143,20 +144,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           IconButton(
-            onPressed: _refresh,
-            tooltip: 'Refresh',
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E24),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: const Icon(
-                Icons.refresh_rounded,
-                color: Colors.white70,
-                size: 20,
-              ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
+              );
+              _refresh();
+            },
+            tooltip: 'Notification Center',
+            icon: FutureBuilder<Map<String, dynamic>>(
+              future: _dataFuture,
+              builder: (context, snapshot) {
+                int alertCount = 0;
+                if (snapshot.hasData) {
+                  final docs =
+                      snapshot.data!['documents'] as List<DocumentRecord>? ?? [];
+                  alertCount = docs.where((d) => d.daysUntilExpiry <= 14).length;
+                }
+
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E24),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                    ),
+                    if (alertCount > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            alertCount > 9 ? '9+' : '$alertCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -191,51 +242,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _dataFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading data: ${snapshot.error}',
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-            );
-          }
-
-          final vehicles = snapshot.data!['vehicles'] as List<Vehicle>;
-          final documents = snapshot.data!['documents'] as List<DocumentRecord>;
-
-          if (vehicles.isEmpty) {
-            return const Center(
-              child: Text(
-                'No vehicles yet — tap + Add Vehicle to add one',
-                style: TextStyle(color: Colors.grey),
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-            itemCount: vehicles.length,
-            itemBuilder: (context, index) {
-              final vehicle = vehicles[index];
-              final vehicleDocs = documents
-                  .where((d) => d.vehicleId == vehicle.id)
-                  .toList();
-
-              return _VehicleCard(
-                vehicle: vehicle,
-                documents: vehicleDocs,
-                onRefresh: _refresh,
-              );
-            },
-          );
+      body: RefreshIndicator(
+        backgroundColor: const Color(0xFF1E1E24),
+        color: const Color(0xFF3B82F6),
+        onRefresh: () async {
+          _refresh();
+          await _dataFuture;
         },
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _dataFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: Center(
+                      child: Text(
+                        'Error loading data: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final vehicles = snapshot.data!['vehicles'] as List<Vehicle>;
+            final documents = snapshot.data!['documents'] as List<DocumentRecord>;
+
+            if (vehicles.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: const Center(
+                      child: Text(
+                        'No vehicles yet — tap + Add Vehicle to add one',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+              itemCount: vehicles.length,
+              itemBuilder: (context, index) {
+                final vehicle = vehicles[index];
+                final vehicleDocs = documents
+                    .where((d) => d.vehicleId == vehicle.id)
+                    .toList();
+
+                return _VehicleCard(
+                  vehicle: vehicle,
+                  documents: vehicleDocs,
+                  onRefresh: _refresh,
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -253,9 +329,12 @@ class _VehicleCard extends StatelessWidget {
   });
 
   Color _statusColor(int daysUntilExpiry) {
-    if (daysUntilExpiry < 0) return const Color(0xFFEF4444); // Red: Expired
-    if (daysUntilExpiry <= 14)
+    if (daysUntilExpiry < 0) {
+      return const Color(0xFFEF4444); // Red: Expired
+    }
+    if (daysUntilExpiry <= 14) {
       return const Color(0xFFF59E0B); // Yellow: Expires Soon
+    }
     return const Color(0xFF10B981); // Green: Valid
   }
 

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../services/database_helper.dart';
-import '../services/symptom_checker_screen_v2.dart';
+import '../services/notification_service.dart';
 import 'add_document_screen.dart';
 import 'add_service_record_screen.dart';
+import 'document_detail_screen.dart';
 import '../models/document_record.dart';
 import '../models/service_record.dart';
 
@@ -88,13 +89,20 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
             SizedBox(width: 10),
             Text(
               'Remove Vehicle',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
         content: Text(
           'Are you sure you want to remove ${widget.vehicle.displayName} (${widget.vehicle.plateNumber})? This will permanently delete all associated documents and service history.',
-          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
@@ -106,9 +114,14 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text('Remove', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Remove',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -134,6 +147,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
       MaterialPageRoute(
         builder: (_) => AddDocumentScreen(
           vehicleId: widget.vehicle.id,
+          vehicleName: widget.vehicle.displayName,
           initialDocument: doc,
         ),
       ),
@@ -147,7 +161,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Document', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Delete Document',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Are you sure you want to delete this ${_documentTypeLabel(doc.type)} record?',
           style: const TextStyle(color: Colors.white70),
@@ -159,7 +176,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -168,6 +187,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
 
     if (confirm == true) {
       await DatabaseHelper.instance.deleteDocument(doc.id);
+      await NotificationService.cancelForDocument(doc.id);
       _refresh();
     }
   }
@@ -191,7 +211,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Service Record', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Delete Service Record',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: const Text(
           'Are you sure you want to delete this service record?',
           style: TextStyle(color: Colors.white70),
@@ -203,7 +226,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -253,7 +278,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: Color(0xFFEF4444),
+              ),
               tooltip: 'Remove Vehicle',
               onPressed: _confirmDeleteVehicle,
             ),
@@ -288,7 +316,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   width: 170,
                   height: 50,
                   child: FloatingActionButton.extended(
-                    heroTag: isDocumentsTab ? 'addDocumentFab' : 'addServiceRecordFab',
+                    heroTag: isDocumentsTab
+                        ? 'addDocumentFab'
+                        : 'addServiceRecordFab',
                     backgroundColor: const Color(0xFF2F80ED),
                     elevation: 4,
                     shape: RoundedRectangleBorder(
@@ -301,6 +331,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               MaterialPageRoute(
                                 builder: (_) => AddDocumentScreen(
                                   vehicleId: widget.vehicle.id,
+                                  vehicleName: widget.vehicle.displayName,
                                 ),
                               ),
                             )
@@ -362,6 +393,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     : ListView(
                         padding: const EdgeInsets.all(16),
                         children: documents.map((doc) {
+                          final expiryDateStr = doc.expiryDate
+                              .toLocal()
+                              .toString()
+                              .split(' ')[0];
+
                           return Card(
                             color: const Color(0xFF1E1E24),
                             margin: const EdgeInsets.only(bottom: 12),
@@ -369,12 +405,26 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: ListTile(
-                              contentPadding: const EdgeInsets.only(left: 14, right: 4),
-                              onTap: () => _editDocument(doc),
+                              contentPadding: const EdgeInsets.only(
+                                left: 14,
+                                right: 4,
+                              ),
+                              onTap: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        DocumentDetailScreen(document: doc),
+                                  ),
+                                );
+                                if (result == true) _refresh();
+                              },
                               leading: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                                  color: const Color(
+                                    0xFF3B82F6,
+                                  ).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
@@ -385,28 +435,43 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               ),
                               title: Text(
                                 _documentTypeLabel(doc.type),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               subtitle: Text(
-                                'Expires: ${doc.expiryDate.toLocal()}'.split(
-                                  ' ',
-                                )[0],
-                                style: const TextStyle(color: Colors.grey),
+                                'Expires: $expiryDateStr',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: _statusColor(doc.daysUntilExpiry).withValues(alpha: 0.15),
+                                      color: _statusColor(
+                                        doc.daysUntilExpiry,
+                                      ).withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: _statusColor(doc.daysUntilExpiry)),
+                                      border: Border.all(
+                                        color: _statusColor(
+                                          doc.daysUntilExpiry,
+                                        ),
+                                      ),
                                     ),
                                     child: Text(
                                       _statusLabel(doc.daysUntilExpiry),
                                       style: TextStyle(
-                                        color: _statusColor(doc.daysUntilExpiry),
+                                        color: _statusColor(
+                                          doc.daysUntilExpiry,
+                                        ),
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -415,21 +480,37 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                   PopupMenuButton<String>(
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(Icons.more_vert_rounded, color: Colors.grey, size: 20),
+                                    icon: const Icon(
+                                      Icons.more_vert_rounded,
+                                      color: Colors.grey,
+                                      size: 20,
+                                    ),
                                     color: const Color(0xFF1E1E24),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                     onSelected: (value) {
                                       if (value == 'edit') _editDocument(doc);
-                                      if (value == 'delete') _deleteDocument(doc);
+                                      if (value == 'delete')
+                                        _deleteDocument(doc);
                                     },
                                     itemBuilder: (context) => [
                                       const PopupMenuItem(
                                         value: 'edit',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.edit_outlined, color: Colors.white70, size: 18),
+                                            Icon(
+                                              Icons.edit_outlined,
+                                              color: Colors.white70,
+                                              size: 18,
+                                            ),
                                             SizedBox(width: 10),
-                                            Text('Edit', style: TextStyle(color: Colors.white)),
+                                            Text(
+                                              'Edit',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -437,9 +518,18 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                         value: 'delete',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                                            Icon(
+                                              Icons.delete_outline,
+                                              color: Color(0xFFEF4444),
+                                              size: 18,
+                                            ),
                                             SizedBox(width: 10),
-                                            Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                                            Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                color: Color(0xFFEF4444),
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -471,12 +561,17 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: ListTile(
-                              contentPadding: const EdgeInsets.only(left: 14, right: 4),
+                              contentPadding: const EdgeInsets.only(
+                                left: 14,
+                                right: 4,
+                              ),
                               onTap: () => _editServiceRecord(s),
                               leading: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                  color: const Color(
+                                    0xFF10B981,
+                                  ).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
@@ -487,32 +582,51 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               ),
                               title: Text(
                                 s.description,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               subtitle: Text(
                                 '$dateStr • ${s.mileage}km' +
                                     (s.cost != null ? ' • Rs.${s.cost}' : '') +
-                                    (s.garageName != null ? ' • ${s.garageName}' : ''),
+                                    (s.garageName != null
+                                        ? ' • ${s.garageName}'
+                                        : ''),
                                 style: const TextStyle(color: Colors.grey),
                               ),
                               trailing: PopupMenuButton<String>(
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
-                                icon: const Icon(Icons.more_vert_rounded, color: Colors.grey, size: 20),
+                                icon: const Icon(
+                                  Icons.more_vert_rounded,
+                                  color: Colors.grey,
+                                  size: 20,
+                                ),
                                 color: const Color(0xFF1E1E24),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 onSelected: (value) {
                                   if (value == 'edit') _editServiceRecord(s);
-                                  if (value == 'delete') _deleteServiceRecord(s);
+                                  if (value == 'delete')
+                                    _deleteServiceRecord(s);
                                 },
                                 itemBuilder: (context) => [
                                   const PopupMenuItem(
                                     value: 'edit',
                                     child: Row(
                                       children: [
-                                        Icon(Icons.edit_outlined, color: Colors.white70, size: 18),
+                                        Icon(
+                                          Icons.edit_outlined,
+                                          color: Colors.white70,
+                                          size: 18,
+                                        ),
                                         SizedBox(width: 10),
-                                        Text('Edit', style: TextStyle(color: Colors.white)),
+                                        Text(
+                                          'Edit',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -520,9 +634,18 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                     value: 'delete',
                                     child: Row(
                                       children: [
-                                        Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                                        Icon(
+                                          Icons.delete_outline,
+                                          color: Color(0xFFEF4444),
+                                          size: 18,
+                                        ),
                                         SizedBox(width: 10),
-                                        Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                                        Text(
+                                          'Delete',
+                                          style: TextStyle(
+                                            color: Color(0xFFEF4444),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),

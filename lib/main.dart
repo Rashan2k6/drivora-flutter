@@ -3,11 +3,20 @@ import 'services/mock_data_provider.dart';
 import 'services/database_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/splash_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await dotenv.load(fileName: ".env");
+    await NotificationService.init();
+    final allVehicles = await DatabaseHelper.instance.getVehicles();
+    for (final v in allVehicles) {
+      final docs = await DatabaseHelper.instance.getAllDocuments(v.id);
+      for (final doc in docs) {
+        await NotificationService.scheduleForDocument(doc, v.displayName);
+      }
+    }
   } catch (e) {
     debugPrint('Could not load .env file: $e');
   }

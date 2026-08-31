@@ -5,15 +5,18 @@ import 'package:uuid/uuid.dart';
 import '../models/document_record.dart';
 import '../services/database_helper.dart';
 import '../services/ai_extraction_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/scan_error_bottom_sheet.dart';
 
 class AddDocumentScreen extends StatefulWidget {
   final String vehicleId;
+  final String? vehicleName;
   final DocumentRecord? initialDocument;
 
   const AddDocumentScreen({
     super.key,
     required this.vehicleId,
+    this.vehicleName,
     this.initialDocument,
   });
 
@@ -50,11 +53,19 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   }
 
   Future<void> _pickExpiryDate() async {
+    final now = DateTime.now();
+    final initial = _expiryDate ?? now.add(const Duration(days: 30));
+    DateTime first = DateTime(2000);
+    DateTime last = DateTime(now.year + 20);
+
+    if (initial.isBefore(first)) first = initial;
+    if (initial.isAfter(last)) last = initial;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 30)),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
@@ -101,7 +112,10 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt, color: Colors.white),
-              title: const Text('Take Photo', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Take Photo',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () async {
                 final file = await picker.pickImage(source: ImageSource.camera);
                 if (context.mounted) Navigator.pop(context, file);
@@ -109,9 +123,14 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library, color: Colors.white),
-              title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Choose from Gallery',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () async {
-                final file = await picker.pickImage(source: ImageSource.gallery);
+                final file = await picker.pickImage(
+                  source: ImageSource.gallery,
+                );
                 if (context.mounted) Navigator.pop(context, file);
               },
             ),
@@ -146,7 +165,9 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Document scanned successfully! Please review details before saving.'),
+            content: Text(
+              'Document scanned successfully! Please review details before saving.',
+            ),
             backgroundColor: Color(0xFF10B981),
           ),
         );
@@ -203,6 +224,15 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     } else {
       await DatabaseHelper.instance.insertDocument(doc);
     }
+
+    String displayName = widget.vehicleName ?? '';
+    if (displayName.isEmpty) {
+      final vehicles = await DatabaseHelper.instance.getVehicles();
+      final match = vehicles.where((v) => v.id == widget.vehicleId).firstOrNull;
+      displayName = match?.displayName ?? 'Your vehicle';
+    }
+
+    await NotificationService.scheduleForDocument(doc, displayName);
 
     if (mounted) {
       Navigator.pop(context, true);
@@ -269,8 +299,10 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                           color: Color(0xFF3B82F6),
                         ),
                       )
-                    : const Icon(Icons.document_scanner_outlined,
-                        color: Color(0xFF3B82F6)),
+                    : const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF3B82F6),
+                      ),
                 label: Text(
                   _scanning ? 'Scanning...' : 'Scan Document',
                   style: const TextStyle(
